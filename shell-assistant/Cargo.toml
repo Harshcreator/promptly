@@ -1,0 +1,14 @@
+[workspace]
+members = [
+    "crates/cli",
+    "crates/core",
+    "crates/executor",
+    "crates/plugins",
+    "crates/storage",
+]
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+opt-level = 3

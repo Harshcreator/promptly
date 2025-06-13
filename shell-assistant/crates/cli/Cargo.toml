@@ -1,0 +1,14 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.0", features = ["derive"] }
+reqwest = { version = "0.11", features = ["json"] }
+tokio = { version = "1", features = ["full"] }
+core = { path = "../core" }
+executor = { path = "../executor" }
+plugins = { path = "../plugins" }
+storage = { path = "../storage" }
+thiserror = "1.0"
