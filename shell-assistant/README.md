@@ -44,6 +44,17 @@ To build and run the project, follow these steps:
    cargo run --workspace --bin cli
    ```
 
+## Testing
+The project includes several test scripts to verify functionality:
+
+1. Basic usage examples are in `tests/test_script.md`.
+
+2. To test the LLM backend functionality:
+   - For Windows: Run `./tests/test_llm_backends.ps1`
+   - For Linux/macOS: Run `./tests/test_llm_backends.sh`
+
+3. A mock flow test example is available in `tests/mock_test.md`.
+
 ## Contributing
 Contributions are welcome! Please open an issue or submit a pull request for any enhancements or bug fixes.
 

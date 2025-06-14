@@ -1,13 +1,20 @@
 use clap::Parser;
 use cli::{CliArgs, copy_to_clipboard};
-use core::{construct_prompt, mock_llm_call, parse_response};
+use core::{construct_prompt, generate_command, LLMProvider, LLMEngine, LLMError};
+use core::llm::{OllamaProvider, LlmRsProvider};
 use executor::shell::{ShellExecutor, UserAction};
 use std::io::{self, Write};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), io::Error> {
     let args = CliArgs::parse();
     let executor = ShellExecutor::new();
+    
+    // Initialize the appropriate LLM provider based on arguments
+    let provider = match create_llm_provider(&args) {
+        Ok(p) => p,
+        Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e.to_string()))
+    };
     
     // Get user input
     let user_input = match args.input {
@@ -27,13 +34,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     
     println!("\nProcessing: {}", user_input);
+    println!("Using LLM backend: {}", provider.name());
     
-    // Mock LLM call (always returns the same response for testing)
+    // Generate the shell command using the LLM
     let prompt = construct_prompt(&user_input);
-    let llm_response = mock_llm_call(&prompt).await?;
     
-    // Parse LLM response
-    let (command, explanation) = parse_response(&llm_response)?;
+    let (command, explanation) = match generate_command(&provider, &prompt).await {
+        Ok((cmd, exp)) => (cmd, exp),
+        Err(e) => {
+            eprintln!("Error generating command: {}", e);
+            return Err(io::Error::new(io::ErrorKind::Other, e.to_string()));
+        }
+    };
     
     // Display command and explanation
     println!("\nI'll help you with that!");
@@ -43,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     match action {
         UserAction::Run => {
-            // Execute the command
+            // Execute the command directly without the helper function
             match executor.execute_command(&command, args.dry_run).await {
                 Ok(output) => {
                     println!("\nCommand executed successfully:");
@@ -55,7 +67,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         UserAction::Copy => {
-            copy_to_clipboard(&command)?;
+            match copy_to_clipboard(&command) {
+                Ok(_) => {},
+                Err(e) => eprintln!("Error copying to clipboard: {}", e)
+            }
         }
         UserAction::Abort => {
             println!("\nCommand execution aborted.");
@@ -63,4 +78,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     
     Ok(())
+}
+
+// Create the appropriate LLM provider based on CLI arguments
+fn create_llm_provider(args: &CliArgs) -> Result<LLMProvider, LLMError> {
+    match args.backend.to_lowercase().as_str() {
+        "ollama" => {
+            // Choose codellama or wizardcoder model
+            let model = if args.online {
+                "wizardcoder"
+            } else {
+                "codellama"
+            };
+            Ok(LLMProvider::Ollama(OllamaProvider::new(model)))
+        },
+        "llm-rs" => {
+            let model_path = args.model_path.clone().unwrap_or_else(|| {
+                println!("No model path specified, using default model path");
+                "models/tinyllama.gguf".to_string()
+            });
+            Ok(LLMProvider::LlmRs(LlmRsProvider::new(&model_path)))
+        },
+        "openai" => {
+            println!("OpenAI backend is currently disabled as an experimental feature.");
+            Err(LLMError::ApiKeyError("OpenAI backend is currently disabled".into()))
+            // Commented out for now
+            /*
+            match OpenAIProvider::new() {
+                Ok(provider) => Ok(LLMProvider::OpenAI(provider)),
+                Err(e) => Err(e)
+            }
+            */
+        },
+        _ => {
+            println!("Unknown backend: {}. Using default (Ollama)", args.backend);
+            Ok(LLMProvider::default())
+        }
+    }
 }
