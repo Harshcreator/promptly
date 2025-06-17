@@ -30,11 +30,15 @@ pub struct CliArgs {
     /// Also selects wizardcoder model for Ollama
     #[clap(long, action)]
     pub online: bool,
-    
-    /// Path to local LLM model for llm-rs backend
+      /// Path to local LLM model for llm-rs backend
     /// Default: "models/tinyllama.gguf"
     #[clap(long, value_parser)]
     pub model_path: Option<String>,
+    
+    /// Path to history file
+    /// Default: ~/.shell-assistant/history.json
+    #[clap(long, value_parser)]
+    pub history_file: Option<String>,
 }
 
 pub fn copy_to_clipboard(text: &str) -> Result<(), String> {

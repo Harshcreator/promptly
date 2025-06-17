@@ -3,12 +3,33 @@ use cli::{CliArgs, copy_to_clipboard};
 use core::{construct_prompt, generate_command, LLMProvider, LLMEngine, LLMError};
 use core::llm::{OllamaProvider, LlmRsProvider};
 use executor::shell::{ShellExecutor, UserAction};
+use storage::CommandHistory;
 use std::io::{self, Write};
+use chrono;
 
 #[tokio::main]
 async fn main() -> Result<(), io::Error> {
     let args = CliArgs::parse();
     let executor = ShellExecutor::new();
+    
+    // Initialize command history with persistence
+    let mut history = if let Some(custom_path) = &args.history_file {
+        CommandHistory::with_persistence(custom_path.clone())
+    } else {
+        match CommandHistory::default_history_path() {
+            Ok(path) => CommandHistory::with_persistence(path),
+            Err(e) => {
+                eprintln!("Warning: Could not determine history file path: {}", e);
+                CommandHistory::new()
+            }
+        }
+    };
+    
+    // Handle history display if requested
+    if args.history {
+        display_history(&history);
+        return Ok(());
+    }
     
     // Initialize the appropriate LLM provider based on arguments
     let provider = match create_llm_provider(&args) {
@@ -60,6 +81,9 @@ async fn main() -> Result<(), io::Error> {
                 Ok(output) => {
                     println!("\nCommand executed successfully:");
                     println!("{}", output);
+                    
+                    // Add command to history
+                    history.add_entry(user_input, command);
                 }
                 Err(e) => {
                     eprintln!("\nError executing command: {}", e);
@@ -68,7 +92,10 @@ async fn main() -> Result<(), io::Error> {
         }
         UserAction::Copy => {
             match copy_to_clipboard(&command) {
-                Ok(_) => {},
+                Ok(_) => {
+                    // Add to history when copied too
+                    history.add_entry(user_input, command);
+                },
                 Err(e) => eprintln!("Error copying to clipboard: {}", e)
             }
         }
@@ -114,5 +141,32 @@ fn create_llm_provider(args: &CliArgs) -> Result<LLMProvider, LLMError> {
             println!("Unknown backend: {}. Using default (Ollama)", args.backend);
             Ok(LLMProvider::default())
         }
+    }
+}
+
+// Display the command history
+fn display_history(history: &CommandHistory) {
+    let entries = history.get_history();
+    
+    if entries.is_empty() {
+        println!("No command history found.");
+        return;
+    }
+    
+    println!("\nCommand History:");
+    println!("---------------");
+    
+    for (i, entry) in entries.iter().enumerate() {
+        let local_time = chrono::DateTime::<chrono::Local>::from(
+            std::time::UNIX_EPOCH + std::time::Duration::from_secs(entry.timestamp)
+        );
+        let formatted_time = local_time.format("%Y-%m-%d %H:%M:%S");
+        
+        println!("{}. [{}] \"{}\" => \"{}\"", 
+            i + 1,
+            formatted_time,
+            entry.input,
+            entry.command
+        );
     }
 }

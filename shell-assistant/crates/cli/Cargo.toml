@@ -12,3 +12,4 @@ executor = { path = "../executor" }
 plugins = { path = "../plugins" }
 storage = { path = "../storage" }
 thiserror = "1.0"
+chrono = "0.4"
