@@ -15,6 +15,10 @@ pub struct CliArgs {
     #[clap(short = 'H', long, action)]
     pub history: bool,
     
+    /// List available plugins
+    #[clap(short = 'L', long, action)]
+    pub list_plugins: bool,
+    
     /// Path to config file
     #[clap(short, long, value_parser)]
     pub config: Option<String>,
@@ -30,7 +34,24 @@ pub struct CliArgs {
     /// Also selects wizardcoder model for Ollama
     #[clap(long, action)]
     pub online: bool,
-      /// Path to local LLM model for llm-rs backend
+    
+    /// Force offline mode (never use online APIs)
+    #[clap(long, action, conflicts_with = "online")]
+    pub offline: bool,
+    
+    /// Enable debug output
+    #[clap(long, action)]
+    pub debug: bool,
+    
+    /// Force execution without safety prompts
+    #[clap(long, action)]
+    pub force: bool,
+    
+    /// Specify plugin to use for command generation
+    #[clap(long, value_parser)]
+    pub plugin: Option<String>,
+    
+    /// Path to local LLM model for llm-rs backend
     /// Default: "models/tinyllama.gguf"
     #[clap(long, value_parser)]
     pub model_path: Option<String>,
@@ -39,6 +60,10 @@ pub struct CliArgs {
     /// Default: ~/.shell-assistant/history.json
     #[clap(long, value_parser)]
     pub history_file: Option<String>,
+    
+    /// Disable feedback prompts
+    #[clap(long, action)]
+    pub no_feedback: bool,
 }
 
 pub fn copy_to_clipboard(text: &str) -> Result<(), String> {

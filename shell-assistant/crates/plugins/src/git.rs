@@ -28,10 +28,6 @@ impl Plugin for GitPlugin {
     }
     
     fn handle(&self, input: &str) -> Option<CommandResult> {
-        if !self.can_handle(input) {
-            return None;
-        }
-        
         let input_lower = input.to_lowercase();
         
         // Pattern matching for common Git operations

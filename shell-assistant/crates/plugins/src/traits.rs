@@ -28,4 +28,13 @@ pub trait Plugin {
     
     /// Processes the natural language input and returns a command result if applicable
     fn handle(&self, input: &str) -> Option<CommandResult>;
+    
+    /// Process method that calls handle if can_handle returns true
+    fn process(&self, input: &str) -> Option<CommandResult> {
+        if self.can_handle(input) {
+            self.handle(input)
+        } else {
+            None
+        }
+    }
 }

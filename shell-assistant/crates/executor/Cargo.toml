@@ -8,3 +8,7 @@ tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.11", features = ["json"] }
 thiserror = "1.0"
 core = { path = "../core" }
+storage = { path = "../storage" }
+colored = "2.0"
+dialoguer = { version = "0.10", features = ["fuzzy-select"] }
+console = "0.15"

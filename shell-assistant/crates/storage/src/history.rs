@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::path::Path;
 use std::io;
-use crate::persistence::{CommandEntry, CommandHistory as PersistentHistory};
+use crate::persistence::{CommandEntry, CommandHistory as PersistentHistory, FeedbackType};
 
 const DEFAULT_HISTORY_SIZE: usize = 100;
 
@@ -47,7 +47,7 @@ impl CommandHistory {
         }
     }
 
-    pub fn add_entry(&mut self, input: String, command: String) {
+    pub fn add_entry(&mut self, input: String, command: String, explanation: Option<String>) {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -60,14 +60,72 @@ impl CommandHistory {
         self.history.push_back(CommandEntry {
             input,
             command,
+            explanation,
             timestamp,
+            feedback: FeedbackType::None,
+            original_command: None,
         });
         
         // Save to file if persistence is enabled
-        if let Some(file_path) = &self.file_path {
+        if let Some(_file_path) = &self.file_path {
             if let Err(e) = self.save_to_file() {
                 eprintln!("Warning: Could not save history to file: {}", e);
             }
+        }
+    }
+    
+    /// Add entry with feedback and possibly edited command
+    pub fn add_entry_with_feedback(&mut self, input: String, command: String, explanation: Option<String>,
+                                  feedback: FeedbackType, original_command: Option<String>) {
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+            
+        if self.history.len() == self.max_size {
+            self.history.pop_front();
+        }
+        
+        self.history.push_back(CommandEntry {
+            input,
+            command,
+            explanation,
+            timestamp,
+            feedback,
+            original_command,
+        });
+        
+        // Save to file if persistence is enabled
+        if let Some(_file_path) = &self.file_path {
+            if let Err(e) = self.save_to_file() {
+                eprintln!("Warning: Could not save history to file: {}", e);
+            }
+        }
+    }
+    
+    /// Update the last entry with feedback
+    pub fn update_last_entry_feedback(&mut self, feedback: FeedbackType, edited_command: Option<String>) -> bool {
+        if let Some(last_entry) = self.history.back_mut() {
+            if feedback == FeedbackType::Edited {
+                // Store original command if edited
+                last_entry.original_command = Some(last_entry.command.clone());
+                // Update with edited version
+                if let Some(cmd) = edited_command {
+                    last_entry.command = cmd;
+                }
+            }
+            last_entry.feedback = feedback;
+            
+            // Save to file if persistence is enabled
+            if let Some(_file_path) = &self.file_path {
+                if let Err(e) = self.save_to_file() {
+                    eprintln!("Warning: Could not save history file after feedback update: {}", e);
+                }
+            }
+            
+            true
+        } else {
+            false
         }
     }
 
@@ -78,6 +136,11 @@ impl CommandHistory {
     /// Get a reference to the internal history entries
     pub fn entries(&self) -> &VecDeque<CommandEntry> {
         &self.history
+    }
+    
+    /// Get the file path for history storage
+    pub fn get_file_path(&self) -> Option<&String> {
+        self.file_path.as_ref()
     }
 
     pub fn clear(&mut self) {

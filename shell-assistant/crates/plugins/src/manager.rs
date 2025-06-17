@@ -35,6 +35,13 @@ impl PluginManager {
         None
     }
     
+    /// Get a reference to a plugin by name
+    pub fn get_plugin(&self, name: &str) -> Option<&(dyn Plugin + Send + Sync)> {
+        self.plugins.iter()
+            .find(|p| p.name().to_lowercase() == name.to_lowercase())
+            .map(|p| p.as_ref())
+    }
+    
     /// Get a list of all registered plugins
     pub fn list_plugins(&self) -> Vec<(&str, &str)> {
         self.plugins

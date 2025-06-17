@@ -13,3 +13,6 @@ plugins = { path = "../plugins" }
 storage = { path = "../storage" }
 thiserror = "1.0"
 chrono = "0.4"
+colored = "2.0"
+dialoguer = { version = "0.10", features = ["fuzzy-select"] }
+console = "0.15"

@@ -4,6 +4,7 @@ use std::collections::HashSet;
 pub struct CommandSafetyChecker {
     high_risk_commands: HashSet<String>,
     high_risk_patterns: Vec<String>,
+    safe_command_patterns: Vec<String>,
 }
 
 impl Default for CommandSafetyChecker {
@@ -43,20 +44,30 @@ impl CommandSafetyChecker {
         let high_risk_patterns = vec![
             "-rf".to_string(),
             "-r -f".to_string(),
-            "-force".to_string(),
             "-confirm:$false".to_string(),
-            "-recursive".to_string(),
             "force=true".to_string(),
-            "recurse".to_string(),
             "/s /q".to_string(),  // Windows silent and quiet delete
             "/y".to_string(),     // Windows suppress confirmation
-            "> /dev/null".to_string(),
-            "2>&1".to_string(),
+        ];
+        
+        // Safe command patterns that should not trigger warnings
+        let safe_command_patterns = vec![
+            "get-childitem".to_string(),
+            "gci".to_string(),
+            "dir".to_string(),
+            "ls".to_string(),
+            "select-string".to_string(),
+            "findstr".to_string(),
+            "find-string".to_string(),
+            "where-object".to_string(),
+            "foreach-object".to_string(),
+            "measure-object".to_string(),
         ];
         
         Self {
             high_risk_commands,
             high_risk_patterns,
+            safe_command_patterns,
         }
     }
     
@@ -65,6 +76,16 @@ impl CommandSafetyChecker {
     /// why the command is considered high risk if applicable.
     pub fn check_command(&self, command: &str) -> (bool, Option<String>) {
         let command_lower = command.to_lowercase();
+        
+        // Check if the command starts with any safe command pattern
+        // If it does, we skip all other safety checks
+        for safe_pattern in &self.safe_command_patterns {
+            if command_lower.starts_with(safe_pattern) || 
+               command_lower.split_whitespace().next() == Some(safe_pattern) {
+                return (false, None);
+            }
+        }
+        
         let words: Vec<&str> = command_lower.split_whitespace().collect();
         
         // Check if the command contains any high-risk commands
@@ -123,6 +144,11 @@ mod tests {
         assert!(!checker.check_command("echo hello").0);
         assert!(!checker.check_command("get-childitem").0);
         assert!(!checker.check_command("ping 8.8.8.8").0);
+        
+        // These should be considered safe due to the whitelist
+        assert!(!checker.check_command("get-childitem -recurse").0);
+        assert!(!checker.check_command("dir -recurse").0);
+        assert!(!checker.check_command("select-string -pattern 'test'").0);
     }
 
     #[test]

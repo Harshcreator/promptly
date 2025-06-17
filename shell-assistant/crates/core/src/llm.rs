@@ -39,6 +39,11 @@ pub enum LLMError {
 pub trait LLMEngine: Send + Sync {
     async fn generate(&self, prompt: &str) -> Result<String, LLMError>;
     fn name(&self) -> &str;
+    
+    /// Returns true if this LLM requires internet access
+    fn is_online(&self) -> bool {
+        false // Default implementation assumes local model
+    }
 }
 
 // Ollama LLM implementation
@@ -91,6 +96,11 @@ impl LLMEngine for OllamaProvider {
 
     fn name(&self) -> &str {
         "Ollama"
+    }
+
+    fn is_online(&self) -> bool {
+        // WizardCoder model usually needs to be downloaded
+        self.model == "wizardcoder"
     }
 }
 
@@ -183,6 +193,11 @@ impl LLMEngine for OpenAIProvider {
 
     fn name(&self) -> &str {
         "OpenAI"
+    }
+
+    fn is_online(&self) -> bool {
+        // OpenAI is always online
+        true
     }
 }
 
@@ -290,6 +305,14 @@ pub enum LLMProvider {
 impl LLMProvider {
     pub fn default() -> Self {
         Self::Ollama(OllamaProvider::new("codellama"))
+    }
+
+    pub fn is_online(&self) -> bool {
+        match self {
+            Self::Ollama(provider) => provider.model == "wizardcoder", // Wizardcoder requires download
+            Self::OpenAI(_) => true,
+            Self::LlmRs(_) => false,
+        }
     }
 
     pub async fn generate_with_fallback(&self, prompt: &str) -> Result<String, LLMError> {
