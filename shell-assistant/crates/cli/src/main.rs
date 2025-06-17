@@ -1,9 +1,10 @@
 use clap::Parser;
 use cli::{CliArgs, copy_to_clipboard};
-use core::{construct_prompt, generate_command, LLMProvider, LLMEngine, LLMError};
-use core::llm::{OllamaProvider, LlmRsProvider};
+use core::{construct_prompt, generate_command, LLMProvider, LLMError};
+use core::llm::{OllamaProvider, LlmRsProvider, LLMEngine};
 use executor::shell::{ShellExecutor, UserAction};
 use storage::CommandHistory;
+use plugins::{PluginManager, GitPlugin, DockerPlugin};
 use std::io::{self, Write};
 use chrono;
 
@@ -24,6 +25,16 @@ async fn main() -> Result<(), io::Error> {
             }
         }
     };
+    
+    // Initialize plugin manager and register plugins
+    let mut plugin_manager = PluginManager::new();
+    plugin_manager.register_plugin(GitPlugin::new());
+    plugin_manager.register_plugin(DockerPlugin::new());
+    
+    println!("Initialized {} plugins: {:?}", 
+        plugin_manager.plugin_count(),
+        plugin_manager.list_plugins().iter().map(|(name, _)| *name).collect::<Vec<&str>>()
+    );
     
     // Handle history display if requested
     if args.history {
@@ -55,6 +66,61 @@ async fn main() -> Result<(), io::Error> {
     }
     
     println!("\nProcessing: {}", user_input);
+    
+    // Try to process with plugins first
+    if let Some(plugin_result) = plugin_manager.process(&user_input) {
+        println!("\nI'll help you with that!");
+        println!("Command: {}", plugin_result.command);
+        println!("Explanation: {}", plugin_result.explanation);
+        
+        // If the plugin has already executed the command, just display the output
+        if plugin_result.executed {
+            if let Some(output) = plugin_result.output {
+                println!("\nCommand executed by plugin:");
+                println!("{}", output);
+                // Add command to history
+                history.add_entry(user_input, plugin_result.command);
+                return Ok(());
+            }
+        }
+        
+        // Otherwise, prompt user for action
+        let action = executor.prompt_for_action(&plugin_result.command, &plugin_result.explanation)?;
+        
+        match action {
+            UserAction::Run => {
+                // Execute the command
+                match executor.execute_command(&plugin_result.command, args.dry_run).await {
+                    Ok(output) => {
+                        println!("\nCommand executed successfully:");
+                        println!("{}", output);
+                        
+                        // Add command to history
+                        history.add_entry(user_input, plugin_result.command);
+                    }
+                    Err(e) => {
+                        eprintln!("\nError executing command: {}", e);
+                    }
+                }
+            }
+            UserAction::Copy => {
+                match copy_to_clipboard(&plugin_result.command) {
+                    Ok(_) => {
+                        // Add to history when copied too
+                        history.add_entry(user_input, plugin_result.command);
+                    },
+                    Err(e) => eprintln!("Error copying to clipboard: {}", e)
+                }
+            }
+            UserAction::Abort => {
+                println!("\nCommand execution aborted.");
+            }
+        }
+        
+        return Ok(());
+    }
+    
+    // If no plugin can handle it, use the LLM
     println!("Using LLM backend: {}", provider.name());
     
     // Generate the shell command using the LLM
