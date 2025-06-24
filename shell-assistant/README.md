@@ -25,6 +25,7 @@ The project is organized as a Cargo workspace with the following crates:
 - **Command Safety**: Built-in safety checks to warn about potentially destructive commands.
 - **History Management**: Records commands with timestamps and user feedback.
 - **Plugin System**: Extensible plugin architecture for specialized command generation.
+- **Terminal Integration**: Can be used as a plugin in existing terminals (PowerShell, Bash, Zsh).
 
 ### User Interface
 - **Colorized Output**: Uses colors to distinguish between different types of information.
@@ -376,6 +377,38 @@ impl Plugin for MyPlugin {
 - For llm-rs:
   - Provide different GGUF model files with the `--model-path` flag
   - Default: `models/tinyllama.gguf`
+
+## Terminal Integration
+
+Shell Assistant can be integrated into your existing terminal environment instead of running as a separate application. This allows you to use its functionality directly within your preferred terminal.
+
+### Integration Methods
+
+1. **PowerShell Module** (Windows):
+   ```powershell
+   cd powershell-module
+   .\Install-ShellAssistant.ps1
+   ```
+   After installation, you can use:
+   ```powershell
+   sa "your request"  # Process a natural language request
+   sa-history         # Show command history
+   sa-plugins         # List available plugins
+   ```
+
+2. **Bash/Zsh Integration** (Linux/macOS):
+   ```bash
+   cd shell-integration
+   ./install.sh
+   source ~/.bashrc  # or ~/.zshrc
+   ```
+   After installation, you can use the same commands as in PowerShell.
+
+3. **Terminal Emulator Configs**:
+   - VS Code: See `terminal-configs/vscode-settings.json`
+   - Windows Terminal: See `terminal-configs/windows-terminal.json`
+
+See `TERMINAL_INTEGRATION.md` for detailed instructions on integrating Shell Assistant with your terminal environment.
 
 ## Contributing
 Contributions are welcome! Please open an issue or submit a pull request for any enhancements or bug fixes.
