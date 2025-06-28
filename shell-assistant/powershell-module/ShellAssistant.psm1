@@ -40,7 +40,8 @@ function Invoke-ShellAssistant {
         [Parameter()]
         [string]$ModelPath
     )
-      # Build arguments
+    
+    # Build arguments
     $arguments = @()
     
     if ($DryRun) { $arguments += "--dry-run" }

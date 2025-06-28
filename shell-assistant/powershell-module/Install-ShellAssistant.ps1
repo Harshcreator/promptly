@@ -48,10 +48,7 @@ if (Test-Path "$PSScriptRoot\bin\shell-assistant.exe") {
     }
 }
 
-# Update module path to point to the copied executable
-$moduleContent = Get-Content -Path "$modulePath\ShellAssistant.psm1" -Raw
-$moduleContent = $moduleContent -replace '# Path to the Shell Assistant executable[\s\S]*?return\r?\n\}', "# Path to the Shell Assistant executable`r`n`$ShellAssistantPath = `"`$PSScriptRoot\bin\shell-assistant.exe`"`r`n`r`n# Check if the executable exists`r`nif (-Not (Test-Path `$ShellAssistantPath)) {`r`n    Write-Error `"Shell Assistant executable not found at: `$ShellAssistantPath`"`r`n    return`r`n}"
-Set-Content -Path "$modulePath\ShellAssistant.psm1" -Value $moduleContent
+# The module file already has the correct path setup, no need to modify it
 
 # Import the module to make sure it works
 Write-Host "Importing module..."
