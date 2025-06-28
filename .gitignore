@@ -1,0 +1,10 @@
+# Exclude the shell-assistant-website directory
+shell-assistant-website/
+
+# Other common ignores
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
+dist/
+build/
