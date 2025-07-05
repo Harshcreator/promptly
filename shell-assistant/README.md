@@ -16,6 +16,50 @@ The project is organized as a Cargo workspace with the following crates:
 
 ## Features
 
+### AI Backend Options
+Shell Assistant supports multiple AI backends - **you can choose the one that best fits your needs**:
+
+#### 🔧 **Ollama (Default - Recommended)**
+- **Best for**: Local development, privacy-focused users
+- **Requirements**: Ollama installed locally
+- **Installation**: 
+  ```bash
+  # Install Ollama
+  winget install Ollama.Ollama  # Windows
+  # Or download from https://ollama.ai
+  
+  # Pull the AI model
+  ollama pull codellama
+  ```
+- **Usage**: `cargo run -- "your request"`
+- **Pros**: Fast, private, no API costs
+- **Cons**: Requires local Ollama installation
+
+#### 💻 **LLM-rs (Fully Offline)**
+- **Best for**: Air-gapped environments, users who don't want external dependencies
+- **Requirements**: Download a GGUF model file (no external services needed)
+- **Installation**: 
+  ```bash
+  # Just download a GGUF model to models/ folder
+  mkdir models
+  # Download tinyllama.gguf or similar model
+  ```
+- **Usage**: `cargo run -- --backend llm-rs --model-path "models/tinyllama.gguf" "your request"`
+- **Pros**: Completely offline, no external dependencies
+- **Cons**: Requires model download, may be slower
+
+#### ☁️ **OpenAI (Cloud-based - Experimental)**
+- **Best for**: Users who prefer cloud AI, don't want local setup
+- **Requirements**: OpenAI API key
+- **Installation**: 
+  ```bash
+  # Set your OpenAI API key
+  export OPENAI_API_KEY="your-api-key-here"
+  ```
+- **Usage**: `cargo run -- --backend openai "your request"`
+- **Pros**: No local setup, powerful models
+- **Cons**: Requires internet, API costs, currently experimental
+
 ### Core Features
 - **Natural Language Processing**: Accepts natural language input and converts it into shell commands.
 - **Multiple LLM Backends**:
@@ -165,26 +209,36 @@ cargo run -- "stop container abcd1234"
 
 ### LLM Backend Selection
 
-Shell Assistant supports multiple LLM backends:
+Shell Assistant supports multiple LLM backends. **You don't need Ollama if you choose alternative backends:**
 
-#### Ollama (Default)
+#### Option 1: Ollama (Default)
+**Requirements**: Ollama must be installed and running locally
 ```powershell
-# Use default Ollama backend with codellama model
+# First, install Ollama and pull a model:
+# ollama pull codellama
+
+# Then use Shell Assistant normally
 cargo run -- "your request"
 
-# Use Ollama with online mode (wizardcoder model)
+# Or use online mode with wizardcoder model
 cargo run -- --online "your request"
 ```
 
-#### Local LLM via llm-rs
+#### Option 2: Local GGUF Models (No Ollama needed)
+**Requirements**: Only a GGUF model file
 ```powershell
-# Use a local GGUF model
-cargo run -- --backend llm-rs --model-path "path/to/model.gguf" "your request"
+# Download a GGUF model file to models/ folder first
+# Then use with llm-rs backend
+cargo run -- --backend llm-rs --model-path "models/tinyllama.gguf" "your request"
 ```
 
-#### OpenAI (Experimental)
+#### Option 3: OpenAI API (No Ollama needed)
+**Requirements**: OpenAI API key
 ```powershell
-# Note: This backend is currently disabled by default
+# Set environment variable first:
+# export OPENAI_API_KEY="your-key"
+
+# Note: This backend is currently experimental
 cargo run -- --backend openai "your request"
 ```
 

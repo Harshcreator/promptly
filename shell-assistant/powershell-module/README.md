@@ -2,6 +2,41 @@
 
 This PowerShell module integrates the Shell Assistant CLI tool directly into your PowerShell terminal, making it easy to translate natural language requests into shell commands without leaving your terminal.
 
+## AI Backend Requirements
+
+**Important**: Shell Assistant supports multiple AI backends - you can choose based on your needs:
+
+### Option 1: Ollama (Recommended)
+- **Setup Required**: Install Ollama locally
+- **Installation**:
+  ```powershell
+  # Install Ollama
+  winget install Ollama.Ollama
+  
+  # Pull the AI model
+  ollama pull codellama
+  ```
+- **Usage**: `sa "your request"` (uses Ollama by default)
+
+### Option 2: Local GGUF Models (Fully Offline)
+- **Setup Required**: Download a GGUF model file
+- **Installation**: 
+  ```powershell
+  # Create models directory and download a GGUF model
+  mkdir models
+  # Download tinyllama.gguf or similar to models/ folder
+  ```
+- **Usage**: `sa -Backend llm-rs -ModelPath "models/tinyllama.gguf" "your request"`
+
+### Option 3: OpenAI API (Cloud-based)
+- **Setup Required**: OpenAI API key
+- **Installation**:
+  ```powershell
+  # Set your API key as environment variable
+  $env:OPENAI_API_KEY = "your-api-key-here"
+  ```
+- **Usage**: `sa -Backend openai "your request"`
+
 ## Installation
 
 1. Run the installation script:

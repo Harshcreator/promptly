@@ -2,6 +2,38 @@
 
 This directory contains scripts to integrate the Shell Assistant CLI with various terminal environments.
 
+## AI Backend Requirements
+
+**Choose Your AI Backend**: Shell Assistant works with multiple AI backends - no single requirement:
+
+### Option 1: Ollama (Recommended)
+- **Setup**: Install Ollama locally and pull a model
+  ```bash
+  # Install Ollama (method varies by OS)
+  # Linux: curl -fsSL https://ollama.com/install.sh | sh
+  # macOS: brew install ollama
+  
+  # Pull the AI model
+  ollama pull codellama
+  ```
+
+### Option 2: Local GGUF Models (Fully Offline)
+- **Setup**: Download a GGUF model file
+  ```bash
+  # Create models directory and download a model
+  mkdir models
+  # Download tinyllama.gguf or similar to models/ folder
+  ```
+- **Usage**: `sa --backend llm-rs --model-path "models/tinyllama.gguf" "your request"`
+
+### Option 3: OpenAI API (Cloud-based)
+- **Setup**: Get an OpenAI API key
+  ```bash
+  # Set your API key
+  export OPENAI_API_KEY="your-api-key-here"
+  ```
+- **Usage**: `sa --backend openai "your request"`
+
 ## PowerShell Integration
 
 For Windows PowerShell and PowerShell Core users, see the `../powershell-module` directory.

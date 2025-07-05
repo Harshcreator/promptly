@@ -12,6 +12,68 @@ We've provided several ways to integrate Shell Assistant into your existing term
 
 ## Quick Installation Guide
 
+### Choose Your AI Backend
+
+Shell Assistant supports multiple AI backends. Choose the one that best fits your needs:
+
+#### **Option 1: Ollama (Recommended)**
+- **Best for**: Local development, privacy-focused users
+- **Requirements**: Ollama installed locally
+- **Setup**:
+
+```powershell
+# 1. Install Ollama
+winget install Ollama.Ollama  # Windows
+# Or download from https://ollama.ai
+
+# 2. Pull the AI model
+ollama pull codellama
+
+# 3. Install Shell Assistant
+cd powershell-module
+.\Install-ShellAssistant.ps1
+
+# 4. Test it out
+sa "list all markdown files"
+```
+
+#### **Option 2: Local GGUF Models (Fully Offline)**
+- **Best for**: Air-gapped environments, complete offline usage
+- **Requirements**: Download a GGUF model file
+- **Setup**:
+
+```powershell
+# 1. Install Shell Assistant
+cd powershell-module
+.\Install-ShellAssistant.ps1
+
+# 2. Download a model (e.g., TinyLlama)
+mkdir models
+# Download tinyllama.gguf to models/ folder
+
+# 3. Use with local model
+sa --backend llm-rs --model-path "models/tinyllama.gguf" "list all markdown files"
+```
+
+#### **Option 3: OpenAI (Cloud-based)**
+- **Best for**: Users who prefer cloud AI, don't want local setup
+- **Requirements**: OpenAI API key
+- **Setup**:
+
+```powershell
+# 1. Install Shell Assistant
+cd powershell-module
+.\Install-ShellAssistant.ps1
+
+# 2. Set your OpenAI API key
+$env:OPENAI_API_KEY = "your-api-key-here"
+
+# 3. Use with OpenAI
+sa --backend openai "list all markdown files"
+```
+
+### Standard Installation (Ollama Backend)
+
 ### Windows (PowerShell)
 
 ```powershell
