@@ -56,6 +56,11 @@ pub struct CliArgs {
     #[clap(long, value_parser)]
     pub model_path: Option<String>,
     
+    /// OpenAI model to use (e.g., gpt-3.5-turbo, gpt-4, gpt-4o)
+    /// Default: "gpt-3.5-turbo"
+    #[clap(long, value_parser)]
+    pub openai_model: Option<String>,
+    
     /// Path to history file
     /// Default: ~/.shell-assistant/history.json
     #[clap(long, value_parser)]

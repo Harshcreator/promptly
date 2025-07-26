@@ -1,7 +1,5 @@
-use std::sync::Arc;
 use async_trait::async_trait;
 use thiserror::Error;
-use once_cell::sync::OnceCell;
 use std::env;
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "llm-rs")]
@@ -114,19 +112,40 @@ pub struct OpenAIProvider {
 
 impl OpenAIProvider {
     pub fn new() -> Result<Self, LLMError> {
+        Self::new_with_model("gpt-3.5-turbo")
+    }
+
+    pub fn new_with_model(model: &str) -> Result<Self, LLMError> {
         // Load from .env file if it exists
         let _ = dotenv::dotenv();
         
         // Get API key from environment
         let api_key = env::var("OPENAI_API_KEY")
-            .map_err(|_| LLMError::ApiKeyError("OPENAI_API_KEY environment variable not set".into()))?;
+            .map_err(|_| LLMError::ApiKeyError(
+                "OPENAI_API_KEY environment variable not set. Please set your OpenAI API key.".into()
+            ))?;
+
+        // Validate API key format (should start with sk-)
+        if !api_key.starts_with("sk-") {
+            return Err(LLMError::ApiKeyError(
+                "Invalid OpenAI API key format. API keys should start with 'sk-'".into()
+            ));
+        }
 
         Ok(Self {
             api_key,
-            model: "gpt-3.5-turbo".to_string(),
+            model: model.to_string(),
             call_count: std::sync::atomic::AtomicUsize::new(0),
             max_calls: 50, // Limit to 50 calls per session
         })
+    }
+
+    pub fn get_model(&self) -> &str {
+        &self.model
+    }
+
+    pub fn set_model(&mut self, model: String) {
+        self.model = model;
     }
 }
 
@@ -178,17 +197,36 @@ impl LLMEngine for OpenAIProvider {
         let response = client
             .post("https://api.openai.com/v1/chat/completions")
             .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
             .json(&request)
             .send()
-            .await?
-            .json::<OpenAIResponse>()
-            .await?;
+            .await;
 
-        if response.choices.is_empty() {
-            return Err(LLMError::ParsingError("No choices in response".into()));
+        let response = match response {
+            Ok(resp) => resp,
+            Err(e) => return Err(LLMError::NetworkError(e)),
+        };
+
+        // Check for HTTP errors
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            
+            return match status.as_u16() {
+                401 => Err(LLMError::ApiKeyError("Invalid OpenAI API key. Please check your OPENAI_API_KEY environment variable.".into())),
+                429 => Err(LLMError::RateLimitExceeded),
+                _ => Err(LLMError::ParsingError(format!("OpenAI API error ({}): {}", status, error_text))),
+            };
         }
 
-        Ok(response.choices[0].message.content.clone())
+        let openai_response: OpenAIResponse = response.json().await
+            .map_err(|e| LLMError::ParsingError(format!("Failed to parse OpenAI response: {}", e)))?;
+
+        if openai_response.choices.is_empty() {
+            return Err(LLMError::ParsingError("No choices in OpenAI response".into()));
+        }
+
+        Ok(openai_response.choices[0].message.content.clone())
     }
 
     fn name(&self) -> &str {

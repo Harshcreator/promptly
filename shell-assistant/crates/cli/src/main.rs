@@ -1,7 +1,7 @@
 use clap::Parser;
 use cli::{CliArgs, copy_to_clipboard};
 use core::{construct_prompt, generate_command, LLMProvider, LLMError};
-use core::llm::{OllamaProvider, LlmRsProvider, LLMEngine};
+use core::llm::{OllamaProvider, LlmRsProvider, OpenAIProvider, LLMEngine};
 use executor::shell::{ShellExecutor, UserAction, FeedbackAction};
 use storage::CommandHistory;
 use storage::persistence::FeedbackType;
@@ -357,15 +357,22 @@ fn create_llm_provider(args: &CliArgs) -> Result<LLMProvider, LLMError> {
                 return Err(LLMError::ApiKeyError("OpenAI backend cannot be used in offline mode".into()));
             }
             
-            println!("{}", "⚠️ OpenAI backend is currently disabled as an experimental feature.".yellow());
-            Err(LLMError::ApiKeyError("OpenAI backend is currently disabled".into()))
-            // Commented out for now
-            /*
-            match OpenAIProvider::new() {
-                Ok(provider) => Ok(LLMProvider::OpenAI(provider)),
+            let model = args.openai_model.as_deref().unwrap_or("gpt-3.5-turbo");
+            match OpenAIProvider::new_with_model(model) {
+                Ok(provider) => {
+                    println!("{} {}", "✅ OpenAI backend initialized successfully with model:".green(), model.green());
+                    Ok(LLMProvider::OpenAI(provider))
+                },
+                Err(LLMError::ApiKeyError(msg)) => {
+                    eprintln!("{} {}", "❌ OpenAI Configuration Error:".red(), msg.red());
+                    eprintln!("{}", "💡 To use OpenAI backend:".yellow());
+                    eprintln!("   {}", "1. Set your API key: export OPENAI_API_KEY=sk-your-key-here".yellow());
+                    eprintln!("   {}", "2. Or create a .env file with: OPENAI_API_KEY=sk-your-key-here".yellow());
+                    eprintln!("   {}", "3. Get your API key from: https://platform.openai.com/api-keys".yellow());
+                    Err(LLMError::ApiKeyError(msg))
+                },
                 Err(e) => Err(e)
             }
-            */
         },
         _ => {
             println!("{} {}", "⚠️ Unknown backend:".yellow(), format!("{}. Using default (Ollama)", args.backend).yellow());
@@ -382,7 +389,7 @@ fn display_history(history: &CommandHistory) {
         println!("{}", "No command history found.".yellow());
         return;
     }
-    
+
     println!("\n{}", "📜 Command History:".bright_cyan());
     println!("{}", "---------------".bright_cyan());
     

@@ -48,24 +48,35 @@ Shell Assistant supports multiple AI backends - **you can choose the one that be
 - **Pros**: Completely offline, no external dependencies
 - **Cons**: Requires model download, may be slower
 
-#### ☁️ **OpenAI (Cloud-based - Experimental)**
-- **Best for**: Users who prefer cloud AI, don't want local setup
-- **Requirements**: OpenAI API key
+#### ☁️ **OpenAI (Cloud-based)**
+- **Best for**: Users who prefer cloud AI, don't want local setup, need access to latest models
+- **Requirements**: OpenAI API key (get one at https://platform.openai.com/api-keys)
 - **Installation**: 
   ```bash
-  # Set your OpenAI API key
-  export OPENAI_API_KEY="your-api-key-here"
+  # Method 1: Environment variable
+  export OPENAI_API_KEY="sk-your-api-key-here"
+  
+  # Method 2: Create .env file (recommended)
+  cp .env.example .env
+  # Edit .env and add your API key
   ```
-- **Usage**: `cargo run -- --backend openai "your request"`
-- **Pros**: No local setup, powerful models
-- **Cons**: Requires internet, API costs, currently experimental
+- **Usage**: 
+  ```bash
+  # Default model (gpt-3.5-turbo)
+  cargo run -- --backend openai "your request"
+  
+  # Custom model
+  cargo run -- --backend openai --openai-model gpt-4 "your request"
+  ```
+- **Pros**: No local setup, powerful models (GPT-3.5, GPT-4), always up-to-date
+- **Cons**: Requires internet, API costs
 
 ### Core Features
 - **Natural Language Processing**: Accepts natural language input and converts it into shell commands.
 - **Multiple LLM Backends**:
   - **Ollama**: Local or online models via the Ollama API.
   - **LLM-rs**: Direct integration with local GGUF models.
-  - **OpenAI**: (Experimental) Integration with OpenAI's API.
+  - **OpenAI**: Integration with OpenAI's GPT models (gpt-3.5-turbo, gpt-4, etc.).
 - **Command Safety**: Built-in safety checks to warn about potentially destructive commands.
 - **History Management**: Records commands with timestamps and user feedback.
 - **Plugin System**: Extensible plugin architecture for specialized command generation.
@@ -115,6 +126,8 @@ Options:
       --force                        Force execution without safety prompts
       --plugin <PLUGIN>              Specify plugin to use for command generation
       --model-path <MODEL_PATH>      Path to local LLM model for llm-rs backend
+      --openai-model <OPENAI_MODEL>  OpenAI model to use (e.g., gpt-3.5-turbo, gpt-4, gpt-4o)
+                                     [default: gpt-3.5-turbo]
       --history-file <HISTORY_FILE>  Path to history file
       --no-feedback                  Disable feedback prompts
   -h, --help                         Print help
@@ -139,6 +152,12 @@ cargo run -- --history
 ```powershell
 # Use offline mode with a local model
 cargo run -- --offline --backend llm-rs --model-path "models/tinyllama.gguf" "list running processes"
+
+# Use OpenAI with default model (gpt-3.5-turbo)
+cargo run -- --backend openai "find all Python files modified in the last week"
+
+# Use OpenAI with a specific model
+cargo run -- --backend openai --openai-model gpt-4 "create a backup script for my project"
 
 # Debug mode with forced execution
 cargo run -- --debug --force "show disk space usage"
@@ -235,11 +254,20 @@ cargo run -- --backend llm-rs --model-path "models/tinyllama.gguf" "your request
 #### Option 3: OpenAI API (No Ollama needed)
 **Requirements**: OpenAI API key
 ```powershell
-# Set environment variable first:
-# export OPENAI_API_KEY="your-key"
-
-# Note: This backend is currently experimental
+# Method 1: Environment variable
+export OPENAI_API_KEY="sk-your-api-key-here"
 cargo run -- --backend openai "your request"
+
+# Method 2: Create .env file (recommended)
+cp .env.example .env
+# Edit .env file to add your API key, then:
+cargo run -- --backend openai "your request"
+
+# Use specific models
+cargo run -- --backend openai --openai-model gpt-4 "your request"
+cargo run -- --backend openai --openai-model gpt-3.5-turbo "your request"
+
+# Available models include: gpt-3.5-turbo, gpt-4, gpt-4o, gpt-4-turbo
 ```
 
 ### Command Safety
