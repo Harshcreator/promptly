@@ -239,63 +239,29 @@ impl LLMEngine for OpenAIProvider {
 #[cfg(feature = "llm-rs")]
 pub struct LlmRsProvider {
     model_path: String,
-    model: OnceCell<llama_cpp::LlamaModel>,
 }
 
 #[cfg(feature = "llm-rs")]
 impl LlmRsProvider {
     pub fn new(model_path: &str) -> Self {
-        Self { model_path: model_path.to_string(), model: OnceCell::new() }
-    }
-
-    fn get_model(&self) -> Result<&llama_cpp::LlamaModel, LLMError> {
-        self.model.get_or_try_init(|| {
-            let model_path = Path::new(&self.model_path);
-            if !model_path.exists() {
-                return Err(LLMError::LocalModelError(format!(
-                    "Model file not found: {}",
-                    self.model_path
-                )));
-            }
-
-            // Create a new model with default parameters
-            let model_params = llama_cpp::ModelParameters::default();
-            let model = llama_cpp::LlamaModel::load_from_file(&self.model_path, model_params)
-                .map_err(|e| LLMError::LocalModelError(format!("Failed to load model: {}", e)))?;
-
-            Ok(model)
-        })
+        Self { model_path: model_path.to_string() }
     }
 }
 
 #[cfg(feature = "llm-rs")]
 #[async_trait]
 impl LLMEngine for LlmRsProvider {
-    async fn generate(&self, prompt: &str) -> Result<String, LLMError> {
-        let model = self.get_model()?;
-
-        // Create a new session with default parameters
-        let session_params = llama_cpp::SessionParameters::default();
-        let mut session = model
-            .create_session(session_params)
-            .map_err(|e| LLMError::LocalModelError(format!("Failed to create session: {}", e)))?;
-
-        // Set inference parameters
-        let inference_params = llama_cpp::InferenceParameters::default().max_tokens(256);
-
-        // Generate text
-        let result = session
-            .infer(prompt, inference_params, |_token_id, token| {
-                print!("{}", token);
-                true // continue inference
-            })
-            .map_err(|e| LLMError::LocalModelError(format!("Inference error: {}", e)))?;
-
-        Ok(result.text)
+    async fn generate(&self, _prompt: &str) -> Result<String, LLMError> {
+        // TODO: The llama_cpp crate API is complex and needs proper token-to-string conversion
+        // For now, return an error message directing users to use Ollama or OpenAI
+        Err(LLMError::LocalModelError(
+            "LLM-RS backend is under development. Please use --backend ollama or --backend openai instead.\n\
+             For offline use, install Ollama and pull a model: ollama pull codellama".to_string()
+        ))
     }
 
     fn name(&self) -> &str {
-        "LLM-rs"
+        "LLM-rs (under development)"
     }
 }
 
