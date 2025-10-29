@@ -19,8 +19,8 @@ Edit the configuration for your enterprise:
 version: "1.0"
 
 llm:
-  backend: llm-rs
-  model_path: "~/.shell-assistant/models/codellama-7b-instruct.Q4_K_M.gguf"
+  backend: ollama  # Use Ollama for offline operation
+  model: codellama  # Model name (pulled via ollama)
 
 security:
   safety_check: true
@@ -97,25 +97,41 @@ Logs are stored in JSON Lines format at `~/.shell-assistant/audit.log`
 
 ### Prerequisites
 - Rust toolchain 1.65+
-- GGUF model file (e.g., CodeLlama, Mistral)
-- Windows: LLVM (for llm-rs backend)
+- **Ollama** (recommended for offline operation)
+- ~~GGUF model file~~ Not needed with Ollama
+- ~~Windows: LLVM~~ Not needed with Ollama
 
-### Build
+### Install Ollama (Recommended)
 ```bash
-# Enterprise offline-only build
-cargo build --release --no-default-features --features "core/llm-rs"
+# Windows
+winget install Ollama.Ollama
 
-# Install binary
-cargo install --path crates/cli --no-default-features --features "core/llm-rs"
+# macOS
+brew install ollama
+
+# Linux
+curl -fsSL https://ollama.com/install.sh | sh
 ```
 
-### Model Setup
+### Pull AI Model
 ```bash
-# Create models directory
-mkdir -p ~/.shell-assistant/models
+# Download CodeLlama (recommended for shell commands)
+ollama pull codellama
 
-# Copy your GGUF model file
-cp codellama-7b-instruct.Q4_K_M.gguf ~/.shell-assistant/models/
+# Or use a smaller model
+ollama pull tinyllama
+
+# Or use Mistral
+ollama pull mistral
+```
+
+### Build Shell Assistant
+```bash
+# Standard build (includes Ollama support)
+cargo build --release
+
+# Install binary
+cargo install --path crates/cli
 ```
 
 ---
