@@ -6,9 +6,20 @@ members = [
     "crates/plugins",
     "crates/storage",
 ]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Shell Assistant Contributors"]
+license = "MPL-2.0"
+repository = "https://github.com/yourusername/shell-assistant"
 
 [profile.dev]
 opt-level = 1
 
 [profile.release]
 opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
