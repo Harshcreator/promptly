@@ -497,3 +497,15 @@ Contributions are welcome! Please open an issue or submit a pull request for any
 
 ## License
 This project is licensed under the MPL License. See the LICENSE file for more details.
+
+---
+
+## Enterprise Deployment
+
+Shell Assistant supports enterprise deployments with:
+- ✅ **Air-gapped/offline operation** - No internet required
+- ✅ **Audit logging** - Full compliance tracking
+- ✅ **Command whitelisting/blacklisting** - Policy enforcement
+- ✅ **YAML configuration** - Centralized settings management
+
+See [`docs/enterprise/README.md`](docs/enterprise/README.md) for deployment guide and [`config.example.yaml`](config.example.yaml) for configuration options.

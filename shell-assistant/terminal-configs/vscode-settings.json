@@ -1,0 +1,10 @@
+{
+  "terminal.integrated.profiles.windows": {
+    "PowerShell with Shell Assistant": {
+      "path": "powershell.exe",
+      "args": ["-NoExit", "-Command", "Import-Module ShellAssistant"],
+      "icon": "terminal-powershell"
+    }
+  },
+  "terminal.integrated.defaultProfile.windows": "PowerShell with Shell Assistant"
+}
