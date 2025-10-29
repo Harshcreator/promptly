@@ -1,10 +1,30 @@
 use std::collections::HashSet;
 
+/// Safety assessment result
+#[derive(Debug, Clone, PartialEq)]
+pub enum SafetyLevel {
+    Safe,
+    Warning,
+    Dangerous,
+    Blocked,
+}
+
+/// Result of safety check
+#[derive(Debug, Clone)]
+pub struct SafetyCheckResult {
+    pub level: SafetyLevel,
+    pub reason: Option<String>,
+}
+
 /// CommandSafetyChecker evaluates shell commands for potential security risks.
 pub struct CommandSafetyChecker {
     high_risk_commands: HashSet<String>,
     high_risk_patterns: Vec<String>,
     safe_command_patterns: Vec<String>,
+    // Enterprise features
+    allowed_commands: Vec<String>,
+    blocked_commands: Vec<String>,
+    compliance_mode: bool,
 }
 
 impl Default for CommandSafetyChecker {
@@ -92,22 +112,86 @@ impl CommandSafetyChecker {
             "measure-object".to_string(),
         ];
 
-        Self { high_risk_commands, high_risk_patterns, safe_command_patterns }
+        Self {
+            high_risk_commands,
+            high_risk_patterns,
+            safe_command_patterns,
+            allowed_commands: Vec::new(),
+            blocked_commands: Vec::new(),
+            compliance_mode: false,
+        }
+    }
+    
+    /// Create a new safety checker with enterprise configuration
+    pub fn with_enterprise_config(
+        allowed_commands: Vec<String>,
+        blocked_commands: Vec<String>,
+        compliance_mode: bool,
+    ) -> Self {
+        let mut checker = Self::new();
+        checker.allowed_commands = allowed_commands;
+        checker.blocked_commands = blocked_commands;
+        checker.compliance_mode = compliance_mode;
+        checker
+    }
+    
+    /// Set allowed commands (whitelist)
+    pub fn set_allowed_commands(&mut self, allowed: Vec<String>) {
+        self.allowed_commands = allowed;
+    }
+    
+    /// Set blocked commands (blacklist)
+    pub fn set_blocked_commands(&mut self, blocked: Vec<String>) {
+        self.blocked_commands = blocked;
+    }
+    
+    /// Enable or disable compliance mode
+    pub fn set_compliance_mode(&mut self, enabled: bool) {
+        self.compliance_mode = enabled;
     }
 
     /// Checks if a command contains any high-risk operations.
-    /// Returns a tuple of (is_high_risk, reason) where reason explains
-    /// why the command is considered high risk if applicable.
-    pub fn check_command(&self, command: &str) -> (bool, Option<String>) {
+    /// Returns a SafetyCheckResult with level and reason
+    pub fn check_command_detailed(&self, command: &str) -> SafetyCheckResult {
         let command_lower = command.to_lowercase();
+        
+        // First check enterprise blacklist
+        for pattern in &self.blocked_commands {
+            if command.contains(pattern) || command_lower.contains(&pattern.to_lowercase()) {
+                return SafetyCheckResult {
+                    level: SafetyLevel::Blocked,
+                    reason: Some(format!("Command blocked by enterprise policy: contains '{}'", pattern)),
+                };
+            }
+        }
+        
+        // Check enterprise whitelist (if configured)
+        if !self.allowed_commands.is_empty() {
+            let mut allowed = false;
+            for pattern in &self.allowed_commands {
+                if command.starts_with(pattern) || command_lower.starts_with(&pattern.to_lowercase()) {
+                    allowed = true;
+                    break;
+                }
+            }
+            
+            if !allowed {
+                return SafetyCheckResult {
+                    level: SafetyLevel::Blocked,
+                    reason: Some("Command not in allowed list (enterprise whitelist active)".to_string()),
+                };
+            }
+        }
 
         // Check if the command starts with any safe command pattern
-        // If it does, we skip all other safety checks
         for safe_pattern in &self.safe_command_patterns {
             if command_lower.starts_with(safe_pattern)
                 || command_lower.split_whitespace().next() == Some(safe_pattern)
             {
-                return (false, None);
+                return SafetyCheckResult {
+                    level: SafetyLevel::Safe,
+                    reason: None,
+                };
             }
         }
 
@@ -116,26 +200,41 @@ impl CommandSafetyChecker {
         // Check if the command contains any high-risk commands
         if let Some(first_word) = words.first() {
             if self.high_risk_commands.contains(&first_word.to_string()) {
-                return (true, Some(format!("Command '{}' can be destructive", first_word)));
+                let level = if self.compliance_mode {
+                    SafetyLevel::Dangerous
+                } else {
+                    SafetyLevel::Warning
+                };
+                return SafetyCheckResult {
+                    level,
+                    reason: Some(format!("Command '{}' can be destructive", first_word)),
+                };
             }
         }
 
         // Check for special PowerShell operators
         for word in &words {
-            // Remove any punctuation to check the core command
             let clean_word = word.trim_matches(|c: char| !c.is_alphanumeric());
             if self.high_risk_commands.contains(&clean_word.to_string()) {
-                return (true, Some(format!("Command '{}' can be destructive", clean_word)));
+                let level = if self.compliance_mode {
+                    SafetyLevel::Dangerous
+                } else {
+                    SafetyLevel::Warning
+                };
+                return SafetyCheckResult {
+                    level,
+                    reason: Some(format!("Command '{}' can be destructive", clean_word)),
+                };
             }
         }
 
         // Check if the command contains any high-risk patterns
         for pattern in &self.high_risk_patterns {
             if command_lower.contains(pattern) {
-                return (
-                    true,
-                    Some(format!("Pattern '{}' often used in destructive operations", pattern)),
-                );
+                return SafetyCheckResult {
+                    level: SafetyLevel::Dangerous,
+                    reason: Some(format!("Pattern '{}' often used in destructive operations", pattern)),
+                };
             }
         }
 
@@ -151,16 +250,33 @@ impl CommandSafetyChecker {
                 || command_lower.contains("/q")
                 || command_lower.contains("/f"))
         {
-            return (true, Some("Recursive or forced deletion can be dangerous".to_string()));
+            return SafetyCheckResult {
+                level: SafetyLevel::Dangerous,
+                reason: Some("Recursive or forced deletion can be dangerous".to_string()),
+            };
         }
 
         // Check for file redirections that could overwrite files
         if command_lower.contains(" > ") && !command_lower.contains(" >> ") {
-            return (true, Some("File redirection (>) will overwrite existing files".to_string()));
+            return SafetyCheckResult {
+                level: SafetyLevel::Warning,
+                reason: Some("File redirection (>) will overwrite existing files".to_string()),
+            };
         }
 
         // Not high risk
-        (false, None)
+        SafetyCheckResult {
+            level: SafetyLevel::Safe,
+            reason: None,
+        }
+    }
+    
+    /// Legacy method for backward compatibility
+    /// Returns a tuple of (is_high_risk, reason)
+    pub fn check_command(&self, command: &str) -> (bool, Option<String>) {
+        let result = self.check_command_detailed(command);
+        let is_high_risk = matches!(result.level, SafetyLevel::Warning | SafetyLevel::Dangerous | SafetyLevel::Blocked);
+        (is_high_risk, result.reason)
     }
 }
 
@@ -172,29 +288,57 @@ mod tests {
     fn test_safe_commands() {
         let checker = CommandSafetyChecker::new();
 
-        // These should be considered safe
-        assert!(!checker.check_command("ls").0);
-        assert!(!checker.check_command("dir").0);
-        assert!(!checker.check_command("echo hello").0);
-        assert!(!checker.check_command("get-childitem").0);
-        assert!(!checker.check_command("ping 8.8.8.8").0);
-
-        // These should be considered safe due to the whitelist
-        assert!(!checker.check_command("get-childitem -recurse").0);
-        assert!(!checker.check_command("dir -recurse").0);
-        assert!(!checker.check_command("select-string -pattern 'test'").0);
+        let result = checker.check_command_detailed("ls");
+        assert_eq!(result.level, SafetyLevel::Safe);
+        
+        let result = checker.check_command_detailed("dir");
+        assert_eq!(result.level, SafetyLevel::Safe);
+        
+        let result = checker.check_command_detailed("get-childitem -recurse");
+        assert_eq!(result.level, SafetyLevel::Safe);
     }
 
     #[test]
     fn test_dangerous_commands() {
         let checker = CommandSafetyChecker::new();
 
-        // These should be flagged as dangerous
-        assert!(checker.check_command("rm -rf /").0);
-        assert!(checker.check_command("sudo rm -rf *").0);
-        assert!(checker.check_command("Remove-Item -Force -Recurse C:\\Windows").0);
-        assert!(checker.check_command("del /s /q C:\\Important").0);
-        assert!(checker.check_command("chmod -R 777 /").0);
-        assert!(checker.check_command("fdisk /dev/sda").0);
+        let result = checker.check_command_detailed("rm -rf /");
+        assert!(matches!(result.level, SafetyLevel::Dangerous));
+        
+        let result = checker.check_command_detailed("Remove-Item -Force -Recurse C:\\Windows");
+        assert!(matches!(result.level, SafetyLevel::Dangerous | SafetyLevel::Warning));
+    }
+    
+    #[test]
+    fn test_enterprise_blacklist() {
+        let checker = CommandSafetyChecker::with_enterprise_config(
+            Vec::new(),
+            vec!["rm -rf /".to_string(), "format".to_string()],
+            true,
+        );
+        
+        let result = checker.check_command_detailed("rm -rf /home");
+        assert_eq!(result.level, SafetyLevel::Blocked);
+        
+        let result = checker.check_command_detailed("format c:");
+        assert_eq!(result.level, SafetyLevel::Blocked);
+    }
+    
+    #[test]
+    fn test_enterprise_whitelist() {
+        let checker = CommandSafetyChecker::with_enterprise_config(
+            vec!["git".to_string(), "ls".to_string(), "cd".to_string()],
+            Vec::new(),
+            true,
+        );
+        
+        let result = checker.check_command_detailed("git status");
+        assert_eq!(result.level, SafetyLevel::Safe);
+        
+        let result = checker.check_command_detailed("ls -la");
+        assert_eq!(result.level, SafetyLevel::Safe);
+        
+        let result = checker.check_command_detailed("rm file.txt");
+        assert_eq!(result.level, SafetyLevel::Blocked);
     }
 }

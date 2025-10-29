@@ -1,0 +1,88 @@
+# Enterprise Configuration for Shell Assistant
+# This is an example configuration file showing all available options
+# Copy this to ~/.shell-assistant/config.yaml and customize as needed
+
+version: "1.0"
+
+# LLM Configuration
+llm:
+  # Backend to use: "ollama", "openai", or "llm-rs"
+  backend: llm-rs
+  
+  # Model path (for llm-rs backend only)
+  # Use full path or ~ for home directory
+  model_path: "~/.shell-assistant/models/codellama-7b-instruct.Q4_K_M.gguf"
+  # For Windows network share:
+  # model_path: "\\\\fileserver\\shared\\shell-assistant\\models\\codellama-7b-instruct.Q4_K_M.gguf"
+  
+  # Model name (for ollama/openai backends)
+  model: codellama
+  
+  # Inference parameters
+  max_tokens: 256          # Maximum tokens to generate
+  temperature: 0.7         # Randomness (0.0 - 2.0)
+  top_p: 0.9              # Nucleus sampling
+  
+  # Performance tuning
+  threads: 8               # CPU threads (default: auto-detect)
+  use_mmap: true          # Memory-map model file
+  use_mlock: false        # Lock model in RAM (requires sufficient memory)
+  gpu_layers: 0           # GPU layers to offload (0 = CPU only, requires CUDA build)
+
+# Security Settings
+security:
+  # Enable safety checker for dangerous commands
+  safety_check: true
+  
+  # Require confirmation for all commands (recommended for enterprise)
+  always_confirm: true
+  
+  # Disable automatic execution
+  auto_execute: false
+  
+  # Enable audit logging
+  audit_log: true
+  audit_log_path: "~/.shell-assistant/audit.log"
+
+# Privacy Settings
+privacy:
+  # Disable telemetry (always disabled in enterprise builds)
+  telemetry: false
+  
+  # Enable offline-only mode (block external network calls)
+  offline_only: true
+  
+  # Save command history
+  save_history: true
+  history_path: "~/.shell-assistant/history.json"
+
+# Enterprise Features
+enterprise:
+  # Organization identification (appears in audit logs)
+  organization: "ACME Corporation"
+  department: "IT Operations"
+  
+  # Enable compliance mode (strict security)
+  compliance_mode: true
+  
+  # Command whitelist (if empty, all commands allowed except blacklisted)
+  # Only commands starting with these patterns are allowed
+  allowed_commands:
+    - git
+    - docker
+    - kubectl
+    - ls
+    - cd
+    - cat
+    - grep
+    - find
+    # Add more as needed
+  
+  # Command blacklist (always checked, even if whitelist is empty)
+  blocked_commands:
+    - "rm -rf /"
+    - "format"
+    - "del /s /q C:\\"
+    - "mkfs"
+    - "dd if=/dev/zero"
+    # Add more dangerous patterns
