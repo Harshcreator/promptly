@@ -1,5 +1,5 @@
+use crate::llm::{LLMError, LLMProvider};
 use serde::{Deserialize, Serialize};
-use crate::llm::{LLMProvider, LLMEngine, LLMError};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct LLMResponse {
@@ -20,7 +20,7 @@ pub fn parse_response(response: &str) -> Result<(String, String), String> {
             }
         }
     }
-    
+
     Err(format!("Failed to parse LLM response. Raw response: {}", response))
 }
 
@@ -45,7 +45,7 @@ fn extract_command_from_text(text: &str) -> Option<(String, String)> {
 
     for line in text.lines() {
         let line = line.trim();
-        
+
         // Extract command
         if line.starts_with("Command:") {
             let cmd = line.trim_start_matches("Command:").trim().to_string();
@@ -58,7 +58,6 @@ fn extract_command_from_text(text: &str) -> Option<(String, String)> {
                 command = Some(cmd);
             }
         }
-        
         // Extract explanation
         else if line.starts_with("Explanation:") {
             let exp = line.trim_start_matches("Explanation:").trim().to_string();
@@ -89,9 +88,12 @@ fn extract_command_from_text(text: &str) -> Option<(String, String)> {
 }
 
 // Call the LLM to generate a shell command from natural language
-pub async fn generate_command(provider: &LLMProvider, prompt: &str) -> Result<(String, String), LLMError> {
+pub async fn generate_command(
+    provider: &LLMProvider,
+    prompt: &str,
+) -> Result<(String, String), LLMError> {
     let response = provider.generate_with_fallback(prompt).await?;
-    
+
     match parse_response(&response) {
         Ok((command, explanation)) => Ok((command, explanation)),
         Err(e) => Err(LLMError::ParsingError(e)),
@@ -101,19 +103,14 @@ pub async fn generate_command(provider: &LLMProvider, prompt: &str) -> Result<(S
 // Mock function to simulate LLM response (for testing)
 pub async fn mock_llm_call(_prompt: &str) -> Result<String, String> {
     // For the end-to-end test, always return the same response
-    let command = if cfg!(windows) {
-        "Get-ChildItem -Force"
-    } else {
-        "ls -la"
-    };
-    
-    let explanation = "Lists all files with details in the current directory, including hidden files.";
-    
-    let response = LLMResponse {
-        command: command.to_string(),
-        explanation: explanation.to_string(),
-    };
-    
+    let command = if cfg!(windows) { "Get-ChildItem -Force" } else { "ls -la" };
+
+    let explanation =
+        "Lists all files with details in the current directory, including hidden files.";
+
+    let response =
+        LLMResponse { command: command.to_string(), explanation: explanation.to_string() };
+
     match serde_json::to_string(&response) {
         Ok(json) => Ok(json),
         Err(e) => Err(format!("Failed to serialize response: {}", e)),

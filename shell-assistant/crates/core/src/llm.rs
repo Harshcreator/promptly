@@ -1,11 +1,11 @@
 use async_trait::async_trait;
-use thiserror::Error;
-use std::env;
-use serde::{Deserialize, Serialize};
 #[cfg(feature = "llm-rs")]
 use llama_cpp;
+use serde::{Deserialize, Serialize};
+use std::env;
 #[cfg(feature = "llm-rs")]
 use std::path::Path;
+use thiserror::Error;
 
 // Define error types for LLM operations
 #[derive(Error, Debug)]
@@ -37,7 +37,7 @@ pub enum LLMError {
 pub trait LLMEngine: Send + Sync {
     async fn generate(&self, prompt: &str) -> Result<String, LLMError>;
     fn name(&self) -> &str;
-    
+
     /// Returns true if this LLM requires internet access
     fn is_online(&self) -> bool {
         false // Default implementation assumes local model
@@ -75,11 +75,7 @@ struct OllamaResponse {
 impl LLMEngine for OllamaProvider {
     async fn generate(&self, prompt: &str) -> Result<String, LLMError> {
         let client = reqwest::Client::new();
-        let request = OllamaRequest {
-            model: &self.model,
-            prompt,
-            stream: false,
-        };
+        let request = OllamaRequest { model: &self.model, prompt, stream: false };
 
         let response = client
             .post(&self.api_url)
@@ -118,17 +114,19 @@ impl OpenAIProvider {
     pub fn new_with_model(model: &str) -> Result<Self, LLMError> {
         // Load from .env file if it exists
         let _ = dotenv::dotenv();
-        
+
         // Get API key from environment
-        let api_key = env::var("OPENAI_API_KEY")
-            .map_err(|_| LLMError::ApiKeyError(
-                "OPENAI_API_KEY environment variable not set. Please set your OpenAI API key.".into()
-            ))?;
+        let api_key = env::var("OPENAI_API_KEY").map_err(|_| {
+            LLMError::ApiKeyError(
+                "OPENAI_API_KEY environment variable not set. Please set your OpenAI API key."
+                    .into(),
+            )
+        })?;
 
         // Validate API key format (should start with sk-)
         if !api_key.starts_with("sk-") {
             return Err(LLMError::ApiKeyError(
-                "Invalid OpenAI API key format. API keys should start with 'sk-'".into()
+                "Invalid OpenAI API key format. API keys should start with 'sk-'".into(),
             ));
         }
 
@@ -188,10 +186,7 @@ impl LLMEngine for OpenAIProvider {
         let client = reqwest::Client::new();
         let request = OpenAIRequest {
             model: &self.model,
-            messages: vec![OpenAIMessage {
-                role: "user",
-                content: prompt,
-            }],
+            messages: vec![OpenAIMessage { role: "user", content: prompt }],
         };
 
         let response = client
@@ -211,7 +206,7 @@ impl LLMEngine for OpenAIProvider {
         if !response.status().is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            
+
             return match status.as_u16() {
                 401 => Err(LLMError::ApiKeyError("Invalid OpenAI API key. Please check your OPENAI_API_KEY environment variable.".into())),
                 429 => Err(LLMError::RateLimitExceeded),
@@ -219,8 +214,9 @@ impl LLMEngine for OpenAIProvider {
             };
         }
 
-        let openai_response: OpenAIResponse = response.json().await
-            .map_err(|e| LLMError::ParsingError(format!("Failed to parse OpenAI response: {}", e)))?;
+        let openai_response: OpenAIResponse = response.json().await.map_err(|e| {
+            LLMError::ParsingError(format!("Failed to parse OpenAI response: {}", e))
+        })?;
 
         if openai_response.choices.is_empty() {
             return Err(LLMError::ParsingError("No choices in OpenAI response".into()));
@@ -249,10 +245,7 @@ pub struct LlmRsProvider {
 #[cfg(feature = "llm-rs")]
 impl LlmRsProvider {
     pub fn new(model_path: &str) -> Self {
-        Self {
-            model_path: model_path.to_string(),
-            model: OnceCell::new(),
-        }
+        Self { model_path: model_path.to_string(), model: OnceCell::new() }
     }
 
     fn get_model(&self) -> Result<&llama_cpp::LlamaModel, LLMError> {
@@ -264,12 +257,12 @@ impl LlmRsProvider {
                     self.model_path
                 )));
             }
-            
+
             // Create a new model with default parameters
             let model_params = llama_cpp::ModelParameters::default();
             let model = llama_cpp::LlamaModel::load_from_file(&self.model_path, model_params)
                 .map_err(|e| LLMError::LocalModelError(format!("Failed to load model: {}", e)))?;
-            
+
             Ok(model)
         })
     }
@@ -280,27 +273,24 @@ impl LlmRsProvider {
 impl LLMEngine for LlmRsProvider {
     async fn generate(&self, prompt: &str) -> Result<String, LLMError> {
         let model = self.get_model()?;
-        
+
         // Create a new session with default parameters
         let session_params = llama_cpp::SessionParameters::default();
-        let mut session = model.create_session(session_params)
+        let mut session = model
+            .create_session(session_params)
             .map_err(|e| LLMError::LocalModelError(format!("Failed to create session: {}", e)))?;
-            
+
         // Set inference parameters
-        let inference_params = llama_cpp::InferenceParameters::default()
-            .max_tokens(256);
-        
+        let inference_params = llama_cpp::InferenceParameters::default().max_tokens(256);
+
         // Generate text
-        let result = session.infer(
-            prompt,
-            inference_params,
-            |_token_id, token| {
+        let result = session
+            .infer(prompt, inference_params, |_token_id, token| {
                 print!("{}", token);
                 true // continue inference
-            },
-        )
-        .map_err(|e| LLMError::LocalModelError(format!("Inference error: {}", e)))?;
-        
+            })
+            .map_err(|e| LLMError::LocalModelError(format!("Inference error: {}", e)))?;
+
         Ok(result.text)
     }
 
@@ -358,7 +348,7 @@ impl LLMProvider {
             LLMProvider::Ollama(provider) => {
                 match provider.generate(prompt).await {
                     Ok(response) => Ok(response),
-                    Err(e) => {                        
+                    Err(e) => {
                         println!("Ollama failed: {}. Falling back to LLM-rs...", e);
                         match &LLMProvider::LlmRs(LlmRsProvider::new("models/tinyllama.gguf")) {
                             LLMProvider::LlmRs(provider) => {
@@ -383,12 +373,13 @@ impl LLMProvider {
                                         */
                                     }
                                 }
-                            },
+                            }
                             _ => unreachable!(),
                         }
                     }
                 }
-            },            LLMProvider::LlmRs(provider) => {
+            }
+            LLMProvider::LlmRs(provider) => {
                 match provider.generate(prompt).await {
                     Ok(response) => Ok(response),
                     Err(e) => {
@@ -410,7 +401,7 @@ impl LLMProvider {
                         */
                     }
                 }
-            },
+            }
             LLMProvider::OpenAI(provider) => provider.generate(prompt).await,
         }
     }

@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Prompt {
@@ -9,18 +9,14 @@ pub struct Prompt {
 
 impl Prompt {
     pub fn new(user_input: String, command: String, explanation: String) -> Self {
-        Self {
-            user_input,
-            command,
-            explanation,
-        }
+        Self { user_input, command, explanation }
     }
 }
 
 // Construct a prompt for the LLM that asks it to generate a shell command
 pub fn construct_prompt(user_input: &str) -> String {
     let os_type = if cfg!(windows) { "Windows PowerShell" } else { "Unix/Linux bash" };
-    
+
     format!(
         r#"You are a shell command assistant. Convert the following natural language query into a {os_type} command.
 Your response must be in this JSON format:

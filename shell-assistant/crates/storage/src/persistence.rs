@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::fs::File;
-use std::io::{self, Write, Read};
+use std::io;
 use std::path::Path;
-use serde::{Serialize, Deserialize};
 
 /// Feedback type for command execution
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
@@ -37,28 +37,35 @@ pub struct CommandHistory {
     pub entries: Vec<CommandEntry>,
 }
 
+impl Default for CommandHistory {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CommandHistory {
     pub fn new() -> Self {
-        CommandHistory {
-            entries: Vec::new(),
-        }
+        CommandHistory { entries: Vec::new() }
     }
 
     /// Get the default history file path, platform-independent
     pub fn default_history_path() -> io::Result<String> {
         let home = if cfg!(windows) {
             std::env::var("USERPROFILE").map_err(|_| {
-                io::Error::new(io::ErrorKind::NotFound, "Could not find USERPROFILE environment variable")
+                io::Error::new(
+                    io::ErrorKind::NotFound,
+                    "Could not find USERPROFILE environment variable",
+                )
             })?
         } else {
             std::env::var("HOME").map_err(|_| {
                 io::Error::new(io::ErrorKind::NotFound, "Could not find HOME environment variable")
             })?
         };
-        
+
         let app_dir = Path::new(&home).join(".shell-assistant");
         let history_file = app_dir.join("history.json");
-        
+
         Ok(history_file.to_string_lossy().into_owned())
     }
 
@@ -67,7 +74,7 @@ impl CommandHistory {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-            
+
         self.entries.push(CommandEntry {
             input,
             command,
@@ -77,15 +84,21 @@ impl CommandHistory {
             original_command: None,
         });
     }
-    
+
     /// Add a command entry with feedback
-    pub fn add_entry_with_feedback(&mut self, input: String, command: String, explanation: Option<String>, 
-                                   feedback: FeedbackType, original_command: Option<String>) {
+    pub fn add_entry_with_feedback(
+        &mut self,
+        input: String,
+        command: String,
+        explanation: Option<String>,
+        feedback: FeedbackType,
+        original_command: Option<String>,
+    ) {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-            
+
         self.entries.push(CommandEntry {
             input,
             command,
@@ -95,9 +108,13 @@ impl CommandHistory {
             original_command,
         });
     }
-    
+
     /// Update feedback for the most recent entry
-    pub fn update_last_entry_feedback(&mut self, feedback: FeedbackType, edited_command: Option<String>) {
+    pub fn update_last_entry_feedback(
+        &mut self,
+        feedback: FeedbackType,
+        edited_command: Option<String>,
+    ) {
         if let Some(last_entry) = self.entries.last_mut() {
             if feedback == FeedbackType::Edited {
                 // If the command was edited, store the original command
@@ -116,7 +133,7 @@ impl CommandHistory {
         if let Some(parent) = Path::new(file_path).parent() {
             std::fs::create_dir_all(parent)?;
         }
-        
+
         let file = File::create(file_path)?;
         serde_json::to_writer(file, &self)?;
         Ok(())
